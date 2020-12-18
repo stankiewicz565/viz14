@@ -448,7 +448,7 @@ gwr14 = ebicat37[which(seqnames(ebicat37)=="chr14")]
 We will use a very crude approach to estimating
 the proportion of genes harboring Alu elements
 that have been implicated for association with traits
-studied in GWAS.  The \texttt{MAPPED_GENE} metadata
+studied in GWAS.  The \texttt{MAPPED\_GENE} metadata
 variable is only informally coded.
 <<getrate>>=
 mapped14 = unique(gwr14$MAPPED_GENE)
