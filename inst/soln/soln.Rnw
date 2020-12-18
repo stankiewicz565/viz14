@@ -23,7 +23,7 @@ BiocStyle::latex()
 
 \clearpage
 
-This vignette must be run after the viz14 vignette.
+This vignette must be run after the vizlab14 vignette.
 
 \section{Exploratory data analysis: transcription factor binding in yeast}
 

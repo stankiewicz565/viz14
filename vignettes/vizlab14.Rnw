@@ -335,7 +335,7 @@ colnames(outs) = c("msep", "amp", "phase")
 suppressMessages({
 for (i in 1:nrow(alp)) {
   curg = force(yg[i])
-  m = try( gettrm( curg, alp ) )
+  m = try( gettrm( curg, alp ), silent=TRUE )
   if (inherits(m, "try-error")) next
   cm = coef(m)
   outs[i,"msep"] = mean(resid(m)^2)
@@ -438,7 +438,7 @@ from the NHGRI GWAS catalog.
 
 <<dogwa,keep.source=TRUE>>=
 library(gwascat)
-data(ebicat37)
+load(system.file("legacy/ebicat37.rda", package="gwascat"))
 ebicat37  # limit to chr14 :
 library(GenomeInfoDb)
 seqlevelsStyle(ebicat37) = "UCSC"
@@ -448,10 +448,10 @@ gwr14 = ebicat37[which(seqnames(ebicat37)=="chr14")]
 We will use a very crude approach to estimating
 the proportion of genes harboring Alu elements
 that have been implicated for association with traits
-studied in GWAS.  The \texttt{Mapped\_gene} metadata
+studied in GWAS.  The \texttt{MAPPED_GENE} metadata
 variable is only informally coded.
 <<getrate>>=
-mapped14 = unique(gwr14$Mapped_gene)
+mapped14 = unique(gwr14$MAPPED_GENE)
 table(mapped14)[1:10]
 @
 
@@ -464,7 +464,7 @@ mean(symovalu %in% mapped14)  # very crude
 @
 
 \subsection{Exonization of Alu element in HNRNPC knockdowns:
-the case of ADSSL1}
+the case of ADSS1}
 
 We work directly from four BAM files to compare first
 replicates of two samples.
@@ -472,7 +472,7 @@ replicates of two samples.
 library(GenomicFiles)
 library(Gviz)
 
-GENENAME = "ADSSL1"    # gene to analyze
+GENENAME = "ADSS1"    # gene to analyze
 gm = genemodel(GENENAME)
 rgm = range(gm)
 at = AnnotationTrack(gm, genome="hg19", name=GENENAME)
@@ -555,7 +555,7 @@ alu14 = alu14[,1:3]
 fn = dir(system.file(
   "extdata", package="RNAseqData.HNRNPC.bam.chr14"), full=TRUE,
   patt="bam$")
-bfv = BamFileViews(fn)
+bfv = GenomicFiles(files=fn)
 browseWreads()
 @
 
