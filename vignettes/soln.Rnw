@@ -1,0 +1,370 @@
+
+
+%\VignetteIndexEntry{CSAMA Brixen 2014: Visualization lab, solutions to exercises}
+%\VignetteDepends{}
+%\VignetteKeywords{Genomic visualization, statistical modeling}
+%\VignettePackage{viz14}
+\documentclass{article}
+
+<<style, echo=FALSE, results=tex>>=
+BiocStyle::latex()
+@
+\newcommand{\bam}{\texttt{BAM}}
+
+\title{CSAMA Brixen 2014: Visualization lab, solutions to exercises}
+\author{Vince Carey}
+\date{Modified: 31 May, 2014. Compiled: \today}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\clearpage
+
+This vignette must be run after the viz14 vignette.
+
+\section{Exploratory data analysis: transcription factor binding in yeast}
+
+\subsection{Outlier detection and declaration of TF binding}
+
+\subsection*{Exercises 1}
+\begin{enumerate}
+
+\item Obtain a list of names of putatively bound genes
+for the transcription factors ACE2, SWI5, SWI6, SWI4, MBP1, FKH1,
+FKH2, NDD1, MCM1.
+
+<<ans,echo=TRUE,cache=TRUE>>=
+library(viz14)
+facs = c("ACE2", "SWI5", "SWI6", "SWI4", "MBP1", 
+   "FKH1", "FKH2", "NDD1", "MCM1")
+bg = lapply(facs, function(x) boundGenes(makebs(x)))
+@
+Selections from the lists of putatively bound genes:
+<<lkm>>=
+names(bg) = facs
+sapply(bg,length)
+sapply(bg,head)
+@
+
+<<code,echo=FALSE>>=
+ps.options(font="serif")
+choptxt = function(x, nwpl=12) {
+ stopifnot(length(x)==1)
+ x = strsplit(x, " ")[[1]]
+ nx = length(x)
+ chunks = ceiling((1:nx)/nwpl)
+ x = split(x, chunks)
+ sapply(x, function(y) paste(y, collapse=" ", sep=""))
+}
+
+if (!exists("genemodel")) genemodel = function(sym, genome="hg19") {
+ stopifnot(genome=="hg19")
+ require(TxDb.Hsapiens.UCSC.hg19.knownGene)
+ require(org.Hs.eg.db)
+ num = get(sym, revmap(org.Hs.egSYMBOL))
+ exonsBy(txdb, by="gene")[[num]]
+}
+
+@
+
+
+
+\item Using the VennDiagram package, assess
+overlap between five of these bound sets.
+
+@
+<<lkven,fig=TRUE,eval=TRUE>>=
+library(VennDiagram)
+v1 = venn.diagram( bg[1:5], filename=NULL )
+grid.draw(v1)
+@
+
+\item Check the documentation for \Rfunction{calout.detect}.
+How would you apply the standard boxplot outlier rules to
+define binding events?
+
+<<donewans>>=
+ac2s = makebs("ACE2")
+bac2s = boundGenes(ac2s, method="boxplot", scale=function(...)1.5)
+length(bac2s)
+bac2g = boundGenes(ac2s)
+length(bac2g)
+@
+\end{enumerate}
+
+\subsection{Associating binding factors with peak expression times
+in the cell cycle}
+
+
+\subsection*{Exercises 2}
+\begin{enumerate}
+\item Interpret the following plot:
+
+<<lkfac,echo=TRUE,results=hide>>=
+data(trigFits)
+facs = c("ACE2", "SWI5", "SWI6", "SWI4", "MBP1",
+   "FKH1", "FKH2", "NDD1", "MCM1")
+#bg = lapply(facs, function(x) boundGenes(makebs(x)))
+bgrps = lapply(bg, function(x) trigFits[
+   intersect(x, rownames(trigFits)), "dtf" ] )
+<<dobpbg,fig=TRUE>>=
+names(bgrps) = facs
+facs
+sapply(bgrps, function(x) length(na.omit(x)))
+boxplot(bgrps, las=2)
+@
+
+\item The TF SKN7 was omitted from \texttt{facs}.
+Introduce the timings
+for gene group associated with SKN7 into the boxplot.
+Interpret the new display in terms of potential
+combinatorial relations among TFs?
+How do you reorder the plot for
+clearer ingestion?
+
+<<solnsk,fig=TRUE>>=
+bsk = boundGenes(makebs("SKN7"))
+bgrps[[ length(bgrps)+1 ]] = trigFits[ intersect(bsk, rownames(trigFits)), "dtf" ]
+names(bgrps)[length(bgrps)] = "SKN7"
+boxplot(bgrps, las=2)
+@
+
+\item Your paper on this finding has been rejected
+with the comment that the figure does not include
+any appraisal of statistical significance.
+How do you respond?
+
+The following code reshapes the percent cell-cycle to peak
+data and uses nonparametric test of common location followed
+by parametric test for trend among a speculatively
+ordered sequence of TFs.  Both provide an approach
+to statistical appraisal, but neither is completely
+satisfactory. 
+
+<<dffits>>=
+bgn = lapply(bgrps, na.omit)
+nb = names(bgn)
+alln = rep(nb, sapply(bgn,length))
+mydf = data.frame(ppkt=unlist(bgn), 
+    fac=factor(alln, levels=c(facs[1:5], "SKN7", facs[-c(1:5)])))
+kruskal.test(ppkt~fac, data=mydf)
+summary(tlm <- lm(ppkt~as.numeric(fac), data=mydf))
+
+<<lkn,fig=TRUE>>=
+oldp = par(no.readonly=TRUE)
+par(mfrow=c(2,2))
+plot(tlm)
+par(oldp)
+@
+
+
+\end{enumerate}
+
+
+\section{Modeling transcription regulation in the yeast cell cycle}
+
+
+\subsection{Spellman's data on expression after colony synchronization}
+
+\subsection{A nonlinear regression model}
+
+\subsection*{Exercises 3}
+
+\begin{enumerate}
+\item Plot the predictions from the nonlinear regression on a
+fine grid of points from 0 to 120 minutes.  Use type = 'l'.
+\item Superimpose the data on these predictions.
+
+<<sol,fig=TRUE,echo=TRUE,eval=TRUE>>=
+ptime = seq(0,120,.1)
+pex = predict(m1, newdata=list(time=ptime))
+plot(pex~ptime, type="l")
+points(alp$time, yal040c)
+@
+
+\item Plot the residuals from the model over time.
+
+<<sol2,fig=TRUE>>=
+res = resid(m1)
+plot(res~alp$time)
+@
+\item If you did not use \CRANpkg{ggplot2} for these visualizations,
+please do so.  If you did use \CRANpkg{ggplot2}, use the standard
+graphics.
+
+\item Enhance the \CRANpkg{ggplot2}-based version with a
+nonparametric model including pointwise
+standard errors.  Interpret.
+
+<<sol3,fig=TRUE>>=
+library(ggplot2)
+prdf = data.frame(pred=pex,time=ptime)
+g1 = ggplot(prdf, aes(x=time,y=pred))
+print(g1 + geom_line() + geom_point(data=df, aes(y=yal040c, x=time)) + 
+   stat_smooth(data=df, aes(y=yal040c, x=time)))
+@
+\end{enumerate}
+
+
+\subsection{A linear least squares procedure}
+
+\subsection{Trigonometric regression over the transcriptome}
+
+
+
+\subsection*{Exercises 4}
+
+\begin{enumerate}
+\item Interpret \texttt{pairs(outs)}.  Choose boundaries
+on msep and amp that identify genes with robust cyclic
+transcription pattern, and subset \texttt{outs} to
+this set of genes.  Is the overlap with Spellman's
+orf800 as you would expect?
+
+<<do4,fig=TRUE>>=
+pairs(outs)
+dou = data.frame(outs)
+limdou <- dou[which(dou$msep<.25 & dou$amp > .75),] 
+mean(rownames(limdou) %in% orf800)
+@
+
+\item Find a pair of genes with estimated phase values near -1.0 and 1.0
+respectively.
+Plot the expression trajectories, superimposed, in the (expression,time) plane.
+Justify and suitably display the estimated values of amp for these genes.
+
+<<newfig,fig=TRUE,eval=TRUE>>=
+plot(exprs(alp)["YOL012C",]~alp$time, type="l", ylim=c(-1.75,1.75),
+  ylab="Expression", xlab="time")
+lines(exprs(alp)["YPL256C",]~alp$time, lty=2)
+ampsP = limdou["YPL256C", "amp"]
+abline(h=ampsP, lty=2)
+abline(h=-ampsP, lty=2)
+ampsO = limdou["YOL012C", "amp"]
+abline(h=ampsO, lty=1)
+abline(h=-ampsO, lty=1)
+legend(20,-1.5, lty=c(1,2), legend=c("YOL012C", "YPL256C"))
+@
+
+
+
+\item Following the \CRANpkg{ggplot2} code patterns of the
+lecture, plot these trajectories in polar coordinates.
+
+<<lk2,fig=TRUE,eval=TRUE>>=
+degdf = function(genename, es, period=64) {
+ stopifnot("time" %in% names(pData(es)))
+ ex = exprs(es)[genename,]
+ et = es$time
+ degtime = 360*(df$time %% period)/period
+ ndf = data.frame(time=et, degtime=degtime)
+ ndf[[tolower(substitute(genename))]] = exprs(es)[genename,]
+ ndf
+}
+d1 = degdf("YOL012C", alp)
+library(ggplot2)
+m012c = ggplot(d1, aes(y=yol012c,x=degtime)) + geom_point()
+print(
+m012c + coord_polar() + stat_smooth() + 
+  stat_smooth(data=degdf("YPL256C", alp), 
+     aes(y=ypl256c, x=degtime, colour="red")) +
+  geom_point(data=degdf("YPL256C", alp), 
+     aes(y=ypl256c, x=degtime, colour="red"))
+)
+@
+
+
+\item Residual analysis: Obtain the residuals for
+trigonmetric fits to YOL012C and YPL256C and display
+in polar coordinates.  Interpret.
+
+<<lkres,fig=TRUE,eval=TRUE>>=
+exprs(alp)["YOL012C",2] = -1.06
+r1 = resid(gettrm("YOL012C", alp))
+r2 = resid(gettrm("YPL256C", alp))
+dtime = 360*(alp$time %%64)/64
+d1 = data.frame(resid=r1, gene="YOL012C", time=dtime)
+d2 = data.frame(resid=r2, gene="YPL256C", time=dtime)
+dres = rbind(d1, d2)
+print(
+ggplot(dres, aes(x=time, y=resid, colour=gene)) + 
+      geom_point() + stat_smooth() +
+      coord_polar() + 
+      stat_abline(slope=0,intercept=0,aes(colour="zeroMean"))
+)
+@
+
+\end{enumerate}
+@
+
+
+\section{RNA-seq application: hnRNP C and Alu exon suppression}
+ 
+\subsection{Alu annotations}
+
+\subsection{Coincidence of Alu elements and genes implicated
+in GWAS}
+
+\subsection{Exonization of Alu element in HNRNPC knockdowns:
+the case of ADSSL1}
+
+
+
+\subsection{Exercises 5}
+\begin{enumerate}
+\item Show that, on chr14, genes harboring Alu elements are
+at least 5 times more likely to be identified as
+trait-associated in GWAS as those that do not harbor
+Alu elements.
+
+<<lkrat>>=
+mean(symovalu %in% mapped14)/ mean(symnoalu %in% mapped14)
+@
+
+\item Transform the code for ADSSL1 into a function
+that will accept any gene symbol, and use it to investigate
+CGRRF1, PCNX (both mentioned in supplement to Zarnack paper)
+and other genes, for example, those harboring Alu and
+mapped to trait variation in GWAS.
+<<newfun,fig=TRUE>>=
+chkHN = function(GENENAME) {
+    library(GenomicFiles)
+    library(Gviz)
+    fn = dir(system.file(
+      "extdata", package="RNAseqData.HNRNPC.bam.chr14"), full=TRUE,
+      patt="bam$")
+    bfv = BamFileViews(fn)
+    STACKTYPE = "hide"
+    kd1a = AlignmentsTrack( path(fileList(bfv)[[1]]), isPaired=TRUE, 
+        name="KD1a", chromosome="chr14", stacking=STACKTYPE )
+    wt1a = AlignmentsTrack( path(fileList(bfv)[[5]]), isPaired=TRUE, 
+        name="WT1a", chromosome="chr14", stacking=STACKTYPE )
+    kd2a = AlignmentsTrack( path(fileList(bfv)[[3]]), isPaired=TRUE, 
+        name="KD2a", chromosome="chr14", stacking=STACKTYPE )
+    wt2a = AlignmentsTrack( path(fileList(bfv)[[7]]), isPaired=TRUE, 
+        name="WT2a", chromosome="chr14", stacking=STACKTYPE )
+    gm = genemodel(GENENAME)
+    rgm = range(gm)
+    at = AnnotationTrack(gm, genome="hg19", name=GENENAME)
+    gt = GenomeAxisTrack(genome="hg19")
+    data(nestrep)
+    rep14 = nestrep[which(seqnames(nestrep)=="chr14")] 
+    alu14 = rep14[ grep("^Alu", rep14$name) ]
+    alut = AnnotationTrack(alu14, genome="hg19", name="Alu")
+    ps.options(font="sans")
+    plotTracks(list(kd1a, kd2a, wt1a, wt2a, alut, at, gt), 
+       from=start(rgm), to=end(rgm))
+    }
+chkHN("PCNX")
+@
+\end{enumerate}
+
+<<lkses>>=
+sessionInfo()
+@
+
+
+\end{document}

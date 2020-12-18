@@ -1,0 +1,53 @@
+%XXX to mask
+
+<<lk1,fig=FALSE,eval=FALSE,results=hide>>=
+pairs(outs)
+dou = data.frame(outs)
+limdou <- dou[which(dou$msep<.25 & dou$amp > .75),] 
+mean(rownames(limdou) %in% orf800)
+@
+
+<<newfig,fig=FALSE,eval=FALSE,results=hide>>=
+plot(exprs(alp)["YOL012C",]~alp$time, type="l", ylim=c(-1.5,1.5))
+lines(exprs(alp)["YPL256C",]~alp$time, lty=2)
+@
+
+%XXX degree tx
+
+<<lk2,fig=FALSE,eval=FALSE,results=hide>>=
+degdf = function(genename, es, period=64) {
+ stopifnot("time" %in% names(pData(es)))
+ ex = exprs(es)[genename,]
+ et = es$time
+ degtime = 360*(df$time %% period)/period
+ ndf = data.frame(time=et, degtime=degtime)
+ ndf[[tolower(substitute(genename))]] = exprs(es)[genename,]
+ ndf
+}
+d1 = degdf("YOL012C", alp)
+library(ggplot2)
+m012c = ggplot(d1, aes(y=yol012c,x=degtime)) + geom_point()
+print(
+m012c + coord_polar() + stat_smooth() + 
+  stat_smooth(data=degdf("YPL256C", alp), 
+     aes(y=ypl256c, x=degtime, colour="red")) +
+  geom_point(data=degdf("YPL256C", alp), 
+     aes(y=ypl256c, x=degtime, colour="red"))
+)
+@
+
+<<lkres,fig=FALSE,eval=FALSE,results=hide>>=
+exprs(alp)["YOL012C",2] = -1.06
+r1 = resid(gettrm("YOL012C", alp))
+r2 = resid(gettrm("YPL256C", alp))
+dtime = 360*(alp$time %%64)/64
+d1 = data.frame(resid=r1, gene="YOL012C", time=dtime)
+d2 = data.frame(resid=r2, gene="YPL256C", time=dtime)
+dres = rbind(d1, d2)
+print(
+ggplot(dres, aes(x=time, y=resid, colour=gene)) + 
+      geom_point() + stat_smooth() +
+      coord_polar() + 
+      stat_abline(slope=0,intercept=0,aes(colour="ident"))
+)
+@
