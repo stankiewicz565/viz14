@@ -9,7 +9,6 @@ importFrom(Gviz, AnnotationTrack, GenomeAxisTrack,
 
 importClassFrom(S4Vectors, "Rle")
 
-importFrom(GenomicFiles, BamFileViews)
 importFrom(Rsamtools, BamFile)
 
 importFrom(BiocGenerics, mget)
